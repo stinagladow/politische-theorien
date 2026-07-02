@@ -113,6 +113,13 @@ figure.q-fig figcaption b{color:var(--ink)}
 .fig-row{display:flex;gap:16px;flex-wrap:wrap;margin:22px 0}
 .fig-row figure.q-fig{flex:1;min-width:200px;margin:0}
 .fig-row figure.q-fig img{aspect-ratio:auto}
+.task.locked{border-style:dashed;border-color:var(--line-strong)}
+.task.locked > *:not(.lock-note){display:none}
+.task:not(.locked) > .lock-note{display:none}
+.lock-note{display:flex;align-items:center;gap:9px;font-family:var(--font-mono);font-size:13px;color:var(--ink-soft);margin:0}
+.lock-note .lock-ic{font-size:16px;filter:grayscale(1)}
+.progress-reset{display:inline-block;margin:8px 0 26px;font-family:var(--font-mono);font-size:11px;letter-spacing:.04em;background:transparent;border:1px solid var(--line-strong);color:var(--ink-soft);border-radius:var(--r);padding:8px 13px;cursor:pointer;transition:border-color .15s ease,color .15s ease}
+.progress-reset:hover{border-color:var(--accent);color:var(--accent)}
 .hook-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin:20px 0}
 .hook-card{background:var(--blatt);border:1px solid var(--line);border-top:2px solid var(--accent);border-radius:var(--r);padding:18px}
 .hook-card h3{font-size:19px;margin:0 0 6px}

@@ -134,24 +134,91 @@ if(opToggle && opPanel && opClose){
   });
 }
 
-document.querySelectorAll("textarea").forEach(area => {
-  const task = area.closest(".task");
-  const min = Number(area.dataset.min || 120);
-  const count = task.querySelector(".cnt");
-  const bar = task.querySelector(".ta-bar i");
-  const btn = task.querySelector(".btn:not(.ghost)");
-  area.addEventListener("input", () => {
-    const len = area.value.trim().length;
-    count.textContent = `${len} Zeichen`;
-    bar.style.transform = `scaleX(${Math.min(1, len / min)})`;
-    btn.disabled = len < min;
-  });
-  btn.addEventListener("click", () => {
+// Aufgaben: sequenziell freischalten + Fortschritt lokal speichern.
+// Eine Aufgabe gilt als bearbeitet, sobald der Text die Mindestlaenge
+// (data-min) erreicht; erst dann wird die naechste Aufgabe entsperrt.
+// Alle Eingaben und der aufgedeckte Loesungsstatus liegen in localStorage,
+// pro Seite und Aufgaben-Index, und werden beim Laden wiederhergestellt.
+(function(){
+  const tasks = Array.from(document.querySelectorAll(".task"));
+  if(!tasks.length){ return; }
+
+  const store = {
+    key(i){ return `ptheorie:${currentPage}:${i}`; },
+    load(i){ try { return JSON.parse(localStorage.getItem(this.key(i))) || {}; } catch(e){ return {}; } },
+    save(i, data){ try { localStorage.setItem(this.key(i), JSON.stringify(data)); } catch(e){} },
+    clear(n){ for(let i = 0; i < n; i++){ try { localStorage.removeItem(this.key(i)); } catch(e){} } }
+  };
+
+  const model = tasks.map((task, i) => {
+    const area = task.querySelector("textarea");
+    const min = Number(area.dataset.min || 120);
+    const saved = store.load(i);
+    if(typeof saved.v === "string"){ area.value = saved.v; }
     const reveal = task.querySelector(".reveal");
-    reveal.classList.add("show");
-    btn.disabled = true;
+    if(saved.r){ reveal.classList.add("show"); }
+    const note = document.createElement("div");
+    note.className = "lock-note";
+    note.innerHTML = `<span class="lock-ic">&#128274;</span> Erst die vorherige Aufgabe bearbeiten (mind. ${min} Zeichen).`;
+    task.insertBefore(note, task.firstChild);
+    return {
+      task, area, min, reveal, note, i,
+      count: task.querySelector(".cnt"),
+      bar: task.querySelector(".ta-bar i"),
+      btn: task.querySelector(".btn:not(.ghost)"),
+      done(){ return this.area.value.trim().length >= this.min; }
+    };
   });
-});
+
+  function refreshMeter(m){
+    const len = m.area.value.trim().length;
+    m.count.textContent = `${len} Zeichen`;
+    m.bar.style.transform = `scaleX(${Math.min(1, len / m.min)})`;
+    m.btn.disabled = len < m.min || m.reveal.classList.contains("show");
+  }
+  function persist(m){
+    store.save(m.i, {v: m.area.value, r: m.reveal.classList.contains("show")});
+  }
+  function applyLocks(){
+    let prevDone = true;
+    model.forEach(m => {
+      const unlocked = prevDone;
+      m.task.classList.toggle("locked", !unlocked);
+      m.area.disabled = !unlocked;
+      if(unlocked){ refreshMeter(m); } else { m.btn.disabled = true; }
+      prevDone = unlocked && m.done();
+    });
+  }
+
+  model.forEach(m => {
+    m.area.addEventListener("input", () => {
+      refreshMeter(m);
+      persist(m);
+      applyLocks();
+    });
+    m.btn.addEventListener("click", () => {
+      m.reveal.classList.add("show");
+      m.btn.disabled = true;
+      persist(m);
+    });
+  });
+  applyLocks();
+
+  // Fortschritt dieser Seite zuruecksetzen.
+  const host = document.querySelector(".page-nav") ? document.querySelector(".page-nav").parentNode : tasks[0].parentNode;
+  const reset = document.createElement("button");
+  reset.type = "button";
+  reset.className = "progress-reset";
+  reset.textContent = "Eingaben auf dieser Seite loeschen";
+  reset.addEventListener("click", () => {
+    if(confirm("Alle Eingaben auf dieser Seite loeschen und Aufgaben wieder sperren?")){
+      store.clear(model.length);
+      location.reload();
+    }
+  });
+  const nav = document.querySelector(".page-nav");
+  if(nav){ host.insertBefore(reset, nav); } else { host.appendChild(reset); }
+})();
 
 document.querySelectorAll(".diff").forEach(diff => {
   const buttons = diff.querySelectorAll(".diff-btn");
