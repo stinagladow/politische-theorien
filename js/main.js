@@ -280,7 +280,7 @@ if(opToggle && opPanel && opClose){
     const saved = store.load(i);
     if(typeof saved.v === "string"){ area.value = saved.v; }
     const reveal = task.querySelector(".reveal");
-    if(reveal){ reveal.classList.add("show"); } // alles dauerhaft offen: Loesung immer sichtbar
+    if(reveal && saved.r){ reveal.classList.add("show"); } // Loesung nur wenn zuvor aufgedeckt
     const note = document.createElement("div");
     note.className = "lock-note";
     note.innerHTML = `<span class="lock-ic">&#128274;</span> Erst die vorherige Aufgabe bearbeiten (mind. ${min} Zeichen).`;
@@ -300,7 +300,11 @@ if(opToggle && opPanel && opClose){
     if(m.bar){ m.bar.style.transform = `scaleX(${Math.min(1, len / m.min)})`; }
   }
   function persist(m){
-    store.save(m.i, {v: m.area.value, r: m.reveal.classList.contains("show")});
+    store.save(m.i, {v: m.area.value, r: m.reveal ? m.reveal.classList.contains("show") : false});
+  }
+  // Loesungs-Button erst freigeben, wenn die Mindestlaenge erreicht ist.
+  function refreshBtn(m){
+    if(m.btn){ m.btn.disabled = !m.done(); }
   }
   // Alle Aufgaben dauerhaft offen: keine sequenzielle Sperre mehr.
   function applyLocks(){
@@ -312,9 +316,15 @@ if(opToggle && opPanel && opClose){
   }
 
   model.forEach(m => {
-    if(m.btn){ m.btn.hidden = true; } // Loesung dauerhaft offen: Button entfaellt
+    refreshBtn(m);
+    if(m.btn){
+      m.btn.addEventListener("click", () => {
+        if(m.done() && m.reveal){ m.reveal.classList.add("show"); persist(m); }
+      });
+    }
     m.area.addEventListener("input", () => {
       refreshMeter(m);
+      refreshBtn(m);
       persist(m);
     });
   });
@@ -339,7 +349,6 @@ if(opToggle && opPanel && opClose){
 document.querySelectorAll(".diff").forEach(diff => {
   const buttons = diff.querySelectorAll(".diff-btn");
   const bodies = diff.querySelectorAll(".diff-body");
-  bodies.forEach(body => body.classList.add("show")); // alles dauerhaft offen
   buttons.forEach((button, index) => {
     button.addEventListener("click", () => {
       bodies[index].classList.toggle("show");
