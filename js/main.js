@@ -280,7 +280,9 @@ if(opToggle && opPanel && opClose){
     const saved = store.load(i);
     if(typeof saved.v === "string"){ area.value = saved.v; }
     const reveal = task.querySelector(".reveal");
-    if(reveal && saved.r){ reveal.classList.add("show"); } // Loesung nur wenn zuvor aufgedeckt
+    // Loesung nur wieder zeigen, wenn zuvor aufgedeckt UND Aufgabe erfuellt.
+    // (Ignoriert veraltete r:true-Flags aus der frueheren "immer offen"-Phase.)
+    if(reveal && saved.r && area.value.trim().length >= min){ reveal.classList.add("show"); }
     const note = document.createElement("div");
     note.className = "lock-note";
     note.innerHTML = `<span class="lock-ic">&#128274;</span> Erst die vorherige Aufgabe bearbeiten (mind. ${min} Zeichen).`;
