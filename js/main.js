@@ -557,3 +557,61 @@ if(progress){
     else if(type === "match"){ initMatch(quiz, idx, saved); }
   });
 })();
+
+// Sequenzielle Sperre: Aufgaben muessen der Reihe nach bearbeitet werden.
+// Eine Aufgabe wird erst freigeschaltet, wenn alle vorherigen abgeschlossen
+// sind. Gilt fuer Textaufgaben (Mindestlaenge) und alle Quiz-Typen. Laeuft
+// nach den beiden Engines oben, damit gespeicherter Fortschritt schon im
+// DOM steht, und wird nach jeder Eingabe/jedem Klick neu ausgewertet.
+(function(){
+  const tasks = Array.from(document.querySelectorAll(".task"));
+  if(tasks.length < 2){ return; }
+
+  function taskDone(task){
+    const area = task.querySelector("textarea");
+    if(area){
+      const min = Number(area.dataset.min || 120);
+      return area.value.trim().length >= min;
+    }
+    const type = task.dataset.quiz;
+    if(type === "mc"){ return !!task.querySelector(".choice.correct"); }
+    if(type === "multi"){ const chk = task.querySelector(".quiz-check"); return chk ? chk.disabled : false; }
+    if(type === "tf"){
+      const rows = Array.from(task.querySelectorAll(".tf-row"));
+      return rows.length > 0 && rows.every(r => r.classList.contains("solved"));
+    }
+    if(type === "match"){
+      const li = Array.from(task.querySelectorAll('.match-col[data-side="left"] .match-item'));
+      return li.length > 0 && li.every(el => el.classList.contains("done"));
+    }
+    return true; // unbekannt: nicht blockieren
+  }
+
+  // Jede Aufgabe braucht eine Sperr-Notiz (Textaufgaben haben schon eine).
+  tasks.forEach(task => {
+    if(!task.querySelector(".lock-note")){
+      const note = document.createElement("div");
+      note.className = "lock-note";
+      note.innerHTML = '<span class="lock-ic">&#128274;</span> Erst die vorherige Aufgabe abschliessen, dann wird diese freigeschaltet.';
+      task.insertBefore(note, task.firstChild);
+    }
+  });
+
+  function refresh(){
+    let blocked = false;
+    tasks.forEach(task => {
+      if(blocked){
+        task.classList.add("locked");
+      } else {
+        task.classList.remove("locked");
+        if(!taskDone(task)){ blocked = true; } // aktuelle Aufgabe: Rest gesperrt
+      }
+    });
+  }
+
+  // Nach den Engine-Handlern neu auswerten (Bubble-Phase + naechster Tick).
+  const schedule = () => setTimeout(refresh, 0);
+  document.addEventListener("input", schedule);
+  document.addEventListener("click", schedule);
+  refresh();
+})();
